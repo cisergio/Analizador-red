@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "analizador-capturas-red"
+version = "1.0.0"
+description = "Analizador de capturas PCAP/PCAPNG con TShark y VirusTotal opcional"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+analizador-capturas = "analizador.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["analizador*"]
