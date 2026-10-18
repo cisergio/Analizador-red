@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import csv
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 from analizador.capture import CaptureError, analyze_capture, public_ip_addresses
-from analizador.cli import process_capture
+from analizador.cli import main, process_capture
 from analizador.report import write_reports
 from analizador.virustotal import VirusTotalClient, VirusTotalError, summarize_ip_response
 
@@ -35,7 +37,21 @@ class CaptureTests(unittest.TestCase):
             binary.write_bytes(b"placeholder")
             with patch.dict("os.environ", {"TSHARK_PATH": str(binary)}):
                 from analizador.capture import find_tshark
-                self.assertEqual(find_tshark(), str(binary))
+                self.assertEqual(Path(find_tshark()), binary.resolve())
+
+    def test_configured_tshark_directory(self):
+        with tempfile.TemporaryDirectory() as td:
+            binary = Path(td) / "tshark.exe"
+            binary.write_bytes(b"placeholder")
+            with patch.dict("os.environ", {"TSHARK_PATH": td}), patch("analizador.capture.shutil.which", return_value=None):
+                from analizador.capture import find_tshark
+                self.assertEqual(Path(find_tshark()), binary.resolve())
+
+    def test_error_explains_stale_or_missing_path(self):
+        with patch.dict("os.environ", {"TSHARK_PATH": "Z:\\missing\\tshark.exe"}), patch("analizador.capture.shutil.which", return_value=None), patch("analizador.capture.Path.is_file", return_value=False):
+            from analizador.capture import find_tshark
+            with self.assertRaisesRegex(CaptureError, "PATH visible para esta terminal"):
+                find_tshark()
 
     def test_public_ip_filter(self):
         report = {"ips": [{"ip": "8.8.8.8"}, {"ip": "192.168.0.1"}, {"ip": "2001:4860:4860::8888"}, {"ip": "127.0.0.1"}]}
@@ -86,13 +102,33 @@ class ReportTests(unittest.TestCase):
         report = {"file": "test.pcap", "ips": [{"ip": "1.1.1.1", "packet_references": 1}, {"ip": "8.8.8.8", "packet_references": 1}], "dns_ips": [], "packets": 2, "protocols": {}, "dns_names": []}
         client = Mock()
         client.lookup_ip.side_effect = [VirusTotalError("timeout"), {"data": {"attributes": {"last_analysis_stats": {"malicious": 1}}}}]
-        with patch("analizador.cli.analyze_capture", return_value=report), patch("analizador.cli.write_reports", return_value=(Path("report.txt"), Path("report.csv"))) as writer:
+        progress = io.StringIO()
+        with patch("analizador.cli.analyze_capture", return_value=report), patch("analizador.cli.write_reports", return_value=(Path("report.txt"), Path("report.csv"))) as writer, redirect_stdout(progress):
             result, vt_results, errors = process_capture("test.pcap", "out", vt_client=client, vt_enabled=True)
         self.assertEqual(len(vt_results), 1)
         self.assertEqual(vt_results[0]["ip"], "8.8.8.8")
         self.assertEqual(len(errors), 1)
         writer.assert_called_once()
         self.assertEqual(result["report_txt"], "report.txt")
+        self.assertIn("[1/2] Consultando 1.1.1.1...", progress.getvalue())
+        self.assertIn("[2/2] Consultando 8.8.8.8...", progress.getvalue())
+        self.assertIn("Consultas VirusTotal terminadas: 1 correctas, 1 con error.", progress.getvalue())
+
+
+class CliTests(unittest.TestCase):
+    def test_menu_asks_for_output_directory_and_passes_it(self):
+        with patch("builtins.input", side_effect=["1", "capture.pcap", "n", "D:\\Analisis\\salida", "2"]), \
+             patch("analizador.cli.Path.is_file", return_value=True), \
+             patch("analizador.cli.process_capture", return_value=({"packets": 2, "ips": [], "report_txt": "D:/Analisis/salida/capture_informe.txt", "report_csv": "D:/Analisis/salida/capture_informe.csv"}, [], [])) as process:
+            self.assertEqual(main(), 0)
+        process.assert_called_once_with("capture.pcap", output_dir="D:\\Analisis\\salida", vt_enabled=False)
+
+    def test_menu_defaults_output_directory_when_empty(self):
+        with patch("builtins.input", side_effect=["1", "capture.pcap", "n", "", "2"]), \
+             patch("analizador.cli.Path.is_file", return_value=True), \
+             patch("analizador.cli.process_capture", return_value=({"packets": 2, "ips": [], "report_txt": "informes/capture_informe.txt", "report_csv": "informes/capture_informe.csv"}, [], [])) as process:
+            self.assertEqual(main(), 0)
+        process.assert_called_once_with("capture.pcap", output_dir="informes", vt_enabled=False)
 
 
 if __name__ == "__main__":

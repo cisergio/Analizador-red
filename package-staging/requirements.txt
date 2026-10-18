@@ -1,1 +1,0 @@
-# La aplicación usa únicamente la biblioteca estándar de Python.

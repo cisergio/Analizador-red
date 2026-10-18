@@ -1,173 +1,185 @@
 # Analizador de capturas de red
 
-Herramienta de consola para analizar archivos PCAP/PCAPNG con TShark, resumir protocolos, direcciones IP, conversaciones y DNS, y guardar informes TXT y CSV. Opcionalmente consulta la reputación de las IP públicas en VirusTotal API v3. Si una consulta falla, registra el error y continúa con las siguientes IP.
+Guía sencilla para descargar, instalar y usar el analizador en tu ordenador. La aplicación lee archivos de captura `.pcap` y `.pcapng` y crea informes en texto y CSV. De forma opcional, puede consultar las IP públicas en VirusTotal.
 
-> El documento de la práctica y el borrador mencionados en la conversación de origen no están disponibles en el espacio de trabajo recibido. Este proyecto implementa el diseño confirmado en esa conversación; contrasta el alcance con la práctica antes de entregarlo como evidencia académica.
+> **Importante:** esta descarga contiene el programa en código fuente, no un instalador `.exe`. Para ejecutarlo en Windows necesitas Python y Wireshark/TShark. En Linux necesitas Python y TShark.
 
-## Funciones
+## Qué necesitas
 
-- Análisis local de PCAP y PCAPNG con TShark.
-- Resumen de paquetes y protocolos, IPs, conversaciones TCP/UDP y nombres/respuestas DNS.
-- Exclusión automática de IP privadas, loopback, reservadas y no globales al consultar VirusTotal.
-- Informes TXT y CSV con resultados parciales y errores de VirusTotal.
-- Sin caché de consultas ni envío de la captura completa.
-- Clave leída de la variable de entorno `VT_API_KEY`, nunca guardada en el repositorio.
-
-## Requisitos
-
+- Un ordenador con Windows 10/11 o Linux.
+- Una conexión a Internet para descargar el programa y preparar Python la primera vez.
 - Python 3.10 o posterior.
-- Wireshark/TShark instalado y disponible como `tshark` en el `PATH`.
-- Clave de VirusTotal Community, solo si se activa la consulta online.
+- Wireshark con TShark, que es la herramienta que lee los archivos de captura.
+- Un archivo de captura `.pcap` o `.pcapng`.
+- Una clave de VirusTotal solo si quieres activar las consultas online. El análisis local funciona sin ella.
 
-### Instalar TShark
+## Descargar la aplicación
 
-**Kali/Debian/Ubuntu**
+En la página del proyecto de GitHub, pulsa **Code → Download ZIP** y extrae el ZIP en una carpeta fácil de encontrar, por ejemplo `C:\Analizador-red` en Windows o `~/Analizador-red` en Linux. No ejecutes el programa desde dentro del ZIP: primero hay que extraerlo.
 
-```bash
-sudo apt update
-sudo apt install tshark
+## Instalación en Windows
+
+### 1. Instala Python
+
+Descarga Python desde [python.org](https://www.python.org/downloads/windows/). Durante la instalación, marca **Add python.exe to PATH**. Abre una ventana nueva de PowerShell y comprueba que está instalado:
+
+```powershell
+py --version
+```
+
+Debe aparecer Python 3.10 o una versión posterior.
+
+### 2. Instala Wireshark y TShark
+
+Descarga Wireshark desde [wireshark.org](https://www.wireshark.org/download.html) y asegúrate de instalar TShark. En PowerShell comprueba:
+
+```powershell
 tshark --version
 ```
 
-En el diálogo de instalación, permite capturar paquetes como usuario no privilegiado solo si necesitas capturar tráfico en vivo. Este programa únicamente lee archivos ya guardados y no necesita permisos de captura.
+Si el comando no se reconoce, cierra y vuelve a abrir PowerShell. Si sigue sin funcionar, el programa puede encontrar la instalación habitual automáticamente; si no, configura la ruta para esa sesión:
 
-**Windows**
-
-Instala Wireshark desde [wireshark.org](https://www.wireshark.org/download.html) y asegúrate de incluir TShark. Normalmente se encuentra en `C:\Program Files\Wireshark`; añade esa carpeta al `PATH` o configura la variable `TSHARK_PATH` (consulta la sección de configuración). Abre una terminal nueva y comprueba `tshark --version`.
-
-**macOS**
-
-Instala Wireshark desde [wireshark.org](https://www.wireshark.org/download.html) o, si usas Homebrew, `brew install --cask wireshark`. Comprueba que `tshark --version` funciona desde la terminal.
-
-## Instalación del proyecto
-
-```bash
-git clone https://github.com/USUARIO/analizador-capturas-red.git
-cd analizador-capturas-red
-python -m venv .venv
+```powershell
+$env:TSHARK_PATH = "C:\Program Files\Wireshark\tshark.exe"
 ```
 
-Activa el entorno virtual:
+Si Wireshark está instalado en otra carpeta, sustituye la ruta por la ubicación real de `tshark.exe`.
 
-```bash
-# Linux/macOS/Kali
-source .venv/bin/activate
+### 3. Prepara el programa
 
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
+Abre PowerShell en la carpeta extraída del proyecto. En el Explorador puedes abrir esa carpeta, hacer clic en la barra de direcciones, escribir `powershell` y pulsar Enter.
 
-# Windows CMD
-.venv\Scripts\activate.bat
+Ejecuta estos comandos desde la carpeta principal, donde está `pyproject.toml`:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
 ```
 
-Instala dependencias y el programa:
+El primer comando crea un entorno privado de Python para esta aplicación. El segundo instala el programa en ese entorno. Esta preparación se hace una sola vez; la primera instalación necesita conexión a Internet.
 
-```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pip install -e .
+### 4. Inicia la aplicación
+
+En esa misma carpeta, ejecuta:
+
+```powershell
+.\.venv\Scripts\python.exe -m analizador
 ```
 
-Si la activación de PowerShell está bloqueada por una directiva del equipo, utiliza CMD o Git Bash; no es necesario cambiar la política global de Windows.
+La próxima vez no es necesario reinstalar: abre PowerShell en la carpeta y ejecuta de nuevo ese comando.
 
-## Obtener y configurar la API key de VirusTotal
+## Instalación en Linux
+
+Los siguientes comandos sirven para Kali, Debian y Ubuntu. Abre una terminal e instala Python y TShark:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-venv python3-pip tshark
+```
+
+Ve a la carpeta donde extrajiste el proyecto. Por ejemplo:
+
+```bash
+cd ~/Analizador-red
+```
+
+Crea el entorno e instala la aplicación:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+```
+
+> La instalación se hace una sola vez y necesita conexión a Internet. Para leer una captura guardada no hace falta habilitar la captura de paquetes sin privilegios.
+
+Para iniciar el programa:
+
+```bash
+.venv/bin/python -m analizador
+```
+
+## Primer análisis
+
+Al iniciar aparece un menú de texto:
+
+1. Elige `1` para analizar una captura.
+2. Escribe la ruta completa del archivo `.pcap` o `.pcapng`. En Windows puedes arrastrar el archivo desde el Explorador a la terminal para pegar su ruta.
+3. Elige si quieres consultar VirusTotal. Para la primera prueba, responde `N`; así el análisis es local y no necesita clave ni Internet.
+4. Escribe la carpeta donde quieres guardar los informes. Si pulsas Enter, se usará la carpeta `informes` dentro del proyecto. Si la carpeta indicada no existe, el programa la crea.
+5. Espera a que aparezca el mensaje con la ubicación de los informes.
+
+El programa crea dos archivos cuyo nombre empieza por el nombre de la captura:
+
+- `Captura_informe.txt`: resumen fácil de leer con número de paquetes, protocolos, IPs, DNS y errores.
+- `Captura_informe.csv`: datos organizados en columnas, que puedes abrir con Excel o LibreOffice Calc.
+
+El analizador usa TShark para leer los paquetes de la captura. No inicia una captura de red en vivo ni sube el archivo PCAP.
+
+## Crear una captura de prueba
+
+Si todavía no tienes una captura, puedes crear una con Wireshark:
+
+1. Abre Wireshark y elige una interfaz de red de tu propio ordenador.
+2. Inicia la captura.
+3. Genera algo de tráfico normal, por ejemplo, abre una página web.
+4. Detén la captura y guárdala como `primera-prueba.pcapng`.
+5. Usa ese archivo en el analizador.
+
+Captura únicamente tráfico propio o para el que tengas autorización.
+
+## Consultar VirusTotal (opcional)
+
+### Obtener la clave
 
 1. Crea una cuenta o inicia sesión en [VirusTotal Community](https://www.virustotal.com/gui/join-us).
-2. Abre el perfil de usuario y copia la API key personal desde la sección de API key.
-3. Configúrala solo en la sesión de terminal que ejecutará el programa:
+2. Abre la página [Mi API key](https://www.virustotal.com/gui/my-apikey) y copia tu clave personal.
+3. En la misma terminal desde la que inicias el programa, guarda la clave temporalmente.
+
+En Windows PowerShell:
+
+```powershell
+$env:VT_API_KEY = "PEGA_AQUI_TU_CLAVE"
+.\.venv\Scripts\python.exe -m analizador
+```
+
+En Linux:
 
 ```bash
-# Linux/macOS/Kali (temporal, hasta cerrar esta terminal)
-export VT_API_KEY="TU_CLAVE"
-
-# Windows PowerShell (temporal, hasta cerrar esta terminal)
-$env:VT_API_KEY = "TU_CLAVE"
-
-# Windows CMD (temporal)
-set VT_API_KEY=TU_CLAVE
+export VT_API_KEY="PEGA_AQUI_TU_CLAVE"
+.venv/bin/python -m analizador
 ```
 
-No pegues la clave en el código, README, capturas de pantalla, informes, issues públicos ni repositorio. No uses un archivo `.env` sin excluirlo de Git. Si una clave se publica accidentalmente, revócala y genera otra desde VirusTotal.
+Cuando el menú pregunte si quieres consultar las IP públicas en VirusTotal, responde `S`. No escribas la clave dentro del código ni la compartas en GitHub, capturas de pantalla o mensajes. La variable temporal desaparece al cerrar la terminal; tendrás que volver a configurarla en una sesión nueva.
 
-La consulta es opcional: se puede analizar y exportar una captura sin clave ni conexión a VirusTotal.
+### Qué ocurre durante la consulta
 
-## Uso
+El programa envía a VirusTotal las IP públicas encontradas, una por una. La captura completa no se envía. La consola muestra el progreso, la IP que está consultando y si la consulta terminó bien o dio error. Se espera aproximadamente 15 segundos entre solicitudes para respetar el límite de la API pública; por eso, con muchas IPs el proceso puede tardar varios minutos.
 
-Inicia el menú:
+VirusTotal advierte que los indicadores consultados pueden incorporarse a su conjunto de datos comunitario. No consultes IPs que revelen información sensible, confidencial o personal. Los límites y condiciones de la API pueden cambiar; consulta [su documentación](https://docs.virustotal.com/reference/public-vs-premium-api).
 
-```bash
-analizador-capturas
-# También funciona:
-python -m analizador
-```
+## Entender el informe
 
-Selecciona la opción de análisis, introduce la ruta del archivo y decide si deseas consultar las IP públicas en VirusTotal. Los archivos resultantes se guardan en `informes/` junto a la carpeta de trabajo, con sufijos `_informe.txt` y `_informe.csv`.
+- **Paquetes analizados:** cantidad de paquetes de red leídos del archivo.
+- **Protocolos:** protocolos detectados. Un mismo paquete puede aparecer en varias capas, por ejemplo Ethernet, IP, UDP y QUIC; por eso no se deben sumar esos números para calcular el total.
+- **Direcciones IP:** IPs vistas en los paquetes y el número de referencias observadas.
+- **Consultas DNS:** nombres de dominio observados en los mensajes DNS.
+- **VirusTotal:** datos de reputación para las IPs consultadas, si se activó esa opción.
+- **Errores:** consultas que no se pudieron completar. Un error en una IP no impide continuar con las siguientes.
 
-Ejemplo de ruta en Kali:
+Una etiqueta de VirusTotal no demuestra por sí sola que una conexión sea maliciosa. Las IPs pueden pertenecer a servicios compartidos, redes de distribución de contenido o servidores DNS.
 
-```text
-/home/kali/capturas/ejemplo.pcapng
-```
+## Si algo no funciona
 
-Ruta con espacios: introdúcela completa; el programa elimina comillas exteriores. También puede usarse la librería desde Python:
+- **No se encuentra Python:** instala Python desde [python.org](https://www.python.org/downloads/windows/) y abre una nueva terminal.
+- **No se encuentra TShark:** instala Wireshark incluyendo TShark. En Windows puedes definir `TSHARK_PATH` como se explica arriba y luego iniciar el programa desde esa misma PowerShell.
+- **No se encuentra el archivo de captura:** comprueba la ruta completa y que el archivo sea `.pcap` o `.pcapng`.
+- **El menú no arranca:** asegúrate de ejecutar el comando desde la carpeta principal del proyecto y de haber completado la instalación.
+- **La clave de VirusTotal no funciona o se agotó la cuota:** revisa que `VT_API_KEY` esté configurada en la terminal actual. También puedes elegir `N` y generar los informes sin VirusTotal.
+- **La consulta tarda:** la consola muestra qué IP se está procesando. Las consultas se espacian para cumplir el límite por minuto.
 
-```python
-from analizador.cli import process_capture
+## Privacidad y limitaciones
 
-report, vt_results, errors = process_capture(
-    "captura.pcapng", output_dir="informes", vt_enabled=False
-)
-print(report["packets"], len(report["ips"]), errors)
-```
-
-## Privacidad, límites y alcance de VirusTotal
-
-- Se envían únicamente las direcciones IP globales consultadas, mediante HTTPS y la cabecera `x-apikey`; el PCAP no se sube.
-- VirusTotal advierte que los indicadores consultados mediante API se escanean y se añaden a su conjunto de datos, donde pueden quedar accesibles a la comunidad. No consultes IPs que revelen información confidencial, personal o sensible.
-- La API pública está limitada actualmente a 4 solicitudes por minuto y 500 al día, y no se permite su uso en productos o servicios comerciales. El cliente espera entre consultas para respetar el límite por minuto; la cuota diaria depende de la cuenta. Comprueba las condiciones vigentes de tu cuenta antes de uso intensivo.
-- Una IP sin informe, una clave inválida, una cuota agotada u otro error queda anotado en el TXT/CSV y no detiene las consultas siguientes.
-- Una dirección marcada como maliciosa/sospechosa por motores de terceros no constituye por sí sola una atribución ni una conclusión definitiva. Interpreta resultados con contexto.
-- Las IP obtenidas de una captura son indicadores observados, no necesariamente los sistemas de origen del incidente: pueden ser CDN, DNS públicos, NAT o infraestructura compartida.
-
-## Pruebas
-
-Las pruebas usan respuestas simuladas y un TShark falso; no requieren clave, conexión de red ni instalación real de Wireshark:
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-Las pruebas comprueban extracción y filtrado, respuestas de VirusTotal, continuidad ante fallos y generación de informes. Para analizar capturas reales, TShark sí debe estar instalado.
-
-## Subir a GitHub
-
-1. Crea un repositorio vacío en GitHub, sin marcar la opción para añadir README si ya vas a subir este proyecto.
-2. Revisa que no haya capturas sensibles, claves ni resultados privados en el directorio.
-3. Desde la carpeta raíz del proyecto:
-
-```bash
-git init
-git add .
-git status
-git commit -m "Añade analizador de capturas de red"
-git branch -M main
-git remote add origin https://github.com/USUARIO/analizador-capturas-red.git
-git push -u origin main
-```
-
-Sustituye `USUARIO` por tu cuenta u organización. GitHub puede pedir autenticación mediante navegador o token personal; no escribas credenciales en el código ni las compartas. Si el repositorio ya existe localmente, revisa `git status` y la URL remota antes de hacer `push`.
-
-## Limitaciones
-
-- La precisión de campos y protocolos depende de la versión de TShark y de lo que pueda decodificarse de la captura.
-- No reconstruye archivos/contenidos, no descifra TLS, no determina causalidad y no sustituye un análisis forense completo.
-- Los informes pueden contener IPs, dominios y metadatos operativos; trátalos según la sensibilidad de la captura.
-- En este entorno de generación no estaba accesible el documento Word original; algunos requisitos particulares de la práctica podrían no estar representados.
-
-## Documentación oficial
-
-- [Instalación de Wireshark](https://www.wireshark.org/docs/wsug_html_chunked/ChBuildInstallWinInstall.html)
-- [VirusTotal: autenticación](https://docs.virustotal.com/reference/authentication)
-- [VirusTotal: informe de dirección IP](https://docs.virustotal.com/reference/ip-info)
-- [VirusTotal: API pública y límites](https://docs.virustotal.com/reference/public-vs-premium-api)
-- [VirusTotal: descripción de la API](https://docs.virustotal.com/docs/api-overview)
+- El archivo PCAP se analiza localmente con TShark; no se sube a VirusTotal.
+- Si activas VirusTotal, se envían las IP públicas consultadas y se necesita conexión a Internet.
+- El programa resume lo que aparece en la captura; no descifra TLS/QUIC ni determina por sí solo quién generó una conexión o si hubo un incidente.
+- Trata los informes como información potencialmente sensible: pueden incluir IPs y dominios observados en la red.
